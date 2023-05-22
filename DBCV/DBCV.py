@@ -9,6 +9,7 @@ Society for Industrial and Applied Mathematics, 2014.
 
 from functools import reduce, partial
 import numpy as np
+from scipy.special import logsumexp
 from scipy.spatial.distance import euclidean, cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.sparse import csgraph
@@ -72,9 +73,10 @@ def _mutual_reach_dist_graph(X, labels, dist_function):
         distance_vectors = dists[mask, :][:, mask]
         n_neighbors = distance_vectors.shape[0]
         z = distance_vectors == 0
-        distance_vectors[z] = np.nan
-        numerator = np.nansum((1/distance_vectors)**n_features, axis=1)
-        cluster_core_dists = (numerator / (n_neighbors - 1)) ** (-1/n_features)
+        distance_vectors[z] = np.inf
+        log_numerator = logsumexp(-n_features * np.log(distance_vectors), axis=1)
+        log_cluster_core_dists = (-1/n_features) * (log_numerator - np.log(n_neighbors-1))
+        cluster_core_dists = np.exp(log_cluster_core_dists)
         core_dists[mask] = cluster_core_dists
 
     distances = np.broadcast_arrays(dists, core_dists[:, np.newaxis], core_dists[np.newaxis, :])
